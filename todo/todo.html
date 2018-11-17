@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>备忘录</title>
+    <link rel="stylesheet" href="./css/index.css">
+    <style>
+        [v-cloak]{
+        display: none;
+    }
+    </style>
+</head>
+
+<body>
+    <section class="todoapp">
+        <header class="header">
+            <h1>备忘录</h1>
+            <input autofocus="autofocus" v-model.trim="inputtodo" @keyup.enter="send" autocomplete="off" placeholder="你想干啥!"
+                class="new-todo" />
+        </header>
+        <section class="main">
+            <input type="checkbox"  v-model="ischeckedAll" @change="setAllChecked" class="toggle-all" />
+            <ul class="todo-list">
+                <li v-cloak class="todo" @dblclick="editTodo(item)" :class="{completed:item.completed,editing:item==todoEdit}" v-for="(item, index) in currentTodo">
+                    <div class="view">
+                        <input type="checkbox" v-model="item.completed" class="toggle" />
+                        <label>{{item.content}}</label> <button class="destroy" @click=delOne(index)></button>
+                    </div>
+                    <input type="text"  @keyup.enter="todoEdit=undefined"  v-model='item.content' class="edit" />
+                </li>
+            </ul>
+        </section>
+        <footer class="footer">
+            <span v-show="unCompleted>0" class="todo-count"><strong>{{unCompleted}}</strong>
+                {{unCompleted>1?'items':'item'}} left </span>
+            <ul class="filters">
+                <li><a href="#/all" @click="status='All'" :class="{selected:status=='All'}">All</a></li>
+                <li><a href="#/active" @click="status='Active'" :class="{selected:status=='Active'}">Active</a></li>
+                <li><a href="#/completed" @click="status='Completed'" :class="{selected:status=='Completed'}">Completed</a></li>
+            </ul>
+            <button @click="clearCompleted"  class="clear-completed">Clear completed</button>
+        </footer>
+    </section>
+    <footer class="info">
+        <p>双击进入编辑状态</p>
+        <p>感谢 <a href="http://evanyou.me">Evan You</a></p>
+        <p>感谢 <a href="http://todomvc.com">TodoMVC</a></p>
+        <p>关于我 <a href="https://autumnfish.github.io/"></a></p>
+    </footer>
+</body>
+<!-- 开发环境版本，包含了有帮助的命令行警告 -->
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script>
+    let vm = new Vue({
+        el: ".todoapp",
+        data: {
+            inputtodo: '',
+            todoList: [],
+            ischeckedAll: false,
+            status: "All",
+            todoEdit: undefined,
+        },
+
+        methods: {
+            // 发送数据
+            send() {
+                //按回车,将输入框中的值存入到数组中,因为还有已完成,所以加一个属性判断是否完成
+                if (this.inputtodo == '') {
+                    alert('请写点东西吧');
+                    return;
+                }
+                this.todoList.unshift({
+                    content: this.inputtodo,
+                    completed: false
+                })
+                this.inputtodo = '';
+            },
+            delOne(index) {
+                // 点击叉叉,从数组中删除这条数据
+                this.todoList.splice(index, 1);
+            },
+            // 上方的全选与全不选
+            setAllChecked() {
+                // 当上方的值改变的时候.下方的每一个completd属性要与上方的一致
+                // console.log(this.ischeckedAll);
+                this.todoList.forEach(ele => {
+                    ele.completed = this.ischeckedAll;
+                });
+
+            },
+            clearCompleted() {
+                // 遍历数组,得到为true的删除
+                // 注意:需要反着遍历删除,不然会出现问题
+                for (let index = this.todoList.length - 1; index >= 0; index--) {
+                    if (this.todoList[index].completed == true) {
+                        this.todoList.splice(index, 1);
+                    }
+
+                }
+            },
+            //双击编辑todo
+            editTodo(item){
+                // console.log(item.content)
+                this.todoEdit=item;
+                
+            }
+        },
+        created() {
+            //创建时取出localstorage;并且到todoList中
+            this.todoList = JSON.parse(localStorage.getItem('todo24') || [])
+        },
+        watch: {
+            // 如果 `question` 发生改变，这个函数就会运行
+            todoList: {
+                //handler是固定写法,函数名已经规定死了
+                handler: function (newQuestion, oldQuestion) {
+                    let totaltodo = this.todoList.length;
+                    let checkedNum = 0;
+                    this.todoList.forEach(ele => {
+                        if (ele.completed == true) {
+                            checkedNum++;
+                        }
+                        console.log(totaltodo, checkedNum);
+
+                    });
+                    this.ischeckedAll = totaltodo == checkedNum;
+                },
+                // 是否深度监听 属性内部的字段也会监听
+                deep: true
+            }
+
+        },
+        computed: { //计算未完成的数量
+            unCompleted() {
+                // 遍历数组,为false的 num++
+                let unCompletedNum = 0;
+                this.todoList.forEach(ele => {
+                    if (ele.completed == false) {
+                        unCompletedNum++;
+                    }
+                });
+                return unCompletedNum;
+            },
+            // 点击all和active,completed分别得到不同的数据
+            currentTodo() {
+                if (this.status == 'All') {
+                    return this.todoList;
+                } else if (this.status == 'Active') {
+                    //遍历数组,得到是false的
+                    let tmpArr = [];
+                    this.todoList.forEach(ele => {
+                        if (ele.completed == false) {
+                            tmpArr.push(ele);
+                        }
+                    })
+                    return tmpArr;
+                } else {
+                    //遍历数组,得到是false的
+                    let tmpArr = [];
+                    this.todoList.forEach(ele => {
+                        if (ele.completed == true) {
+                            tmpArr.push(ele);
+                        }
+                    })
+                    return tmpArr;
+                }
+            }
+        }
+    })
+
+    window.onbeforeunload = function () {
+        // 设置localstorage
+        localStorage.setItem('todo24', JSON.stringify(vm.todoList))
+    }
+</script>
+
+</html>
